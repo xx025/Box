@@ -29,17 +29,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: Download TVBoxOSC keystore and configure signing
+      # 与 j4Uq/TVBoxOSC 完全一致：用 sed 注入签名到 app/build.gradle，再写 gradle.properties
+      # 见 https://github.com/j4Uq/TVBoxOSC/blob/master/.github/workflows/test.yml 的 Release Apk Sign 步骤
+      - name: Release Apk Sign
         run: |
           curl -sL -o app/TVBoxOSC.jks "https://github.com/j4Uq/TVBoxOSC/raw/master/.github/workflows/TVBoxOSC.jks"
-          echo "RELEASE_STORE_FILE=./TVBoxOSC.jks" >> gradle.properties
-          echo "RELEASE_KEY_ALIAS=TVBoxOSC" >> gradle.properties
-          echo "RELEASE_STORE_PASSWORD=TVBoxOSC" >> gradle.properties
-          echo "RELEASE_KEY_PASSWORD=TVBoxOSC" >> gradle.properties
+          signingConfigs='ICAgIHNpZ25pbmdDb25maWdzIHtcCiAgICAgICAgaWYgKHByb2plY3QuaGFzUHJvcGVydHkoIlJFTEVBU0VfU1RPUkVfRklMRSIpKSB7XAogICAgICAgICAgICBteUNvbmZpZyB7XAogICAgICAgICAgICAgICAgc3RvcmVGaWxlIGZpbGUoUkVMRUFTRV9TVE9SRV9GSUxFKVwKICAgICAgICAgICAgICAgIHN0b3JlUGFzc3dvcmQgUkVMRUFTRV9TVE9SRV9QQVNTV09SRFwKICAgICAgICAgICAgICAgIGtleUFsaWFzIFJFTEVBU0VfS0VZX0FMSUFTXAogICAgICAgICAgICAgICAga2V5UGFzc3dvcmQgUkVMRUFTRV9LRVlfUEFTU1dPUkRcCiAgICAgICAgICAgICAgICB2MVNpZ25pbmdFbmFibGVkIHRydWVcCiAgICAgICAgICAgICAgICB2MlNpZ25pbmdFbmFibGVkIHRydWVcCiAgICAgICAgICAgICAgICBlbmFibGVWM1NpZ25pbmcgPSB0cnVlXAogICAgICAgICAgICAgICAgZW5hYmxlVjRTaWduaW5nID0gdHJ1ZVwKICAgICAgICAgICAgfVwKICAgICAgICB9XAogICAgfVwKXA=='
+          signingConfig='ICAgICAgICAgICAgaWYgKHByb2plY3QuaGFzUHJvcGVydHkoIlJFTEVBU0VfU1RPUkVfRklMRSIpKSB7XAogICAgICAgICAgICAgICAgc2lnbmluZ0NvbmZpZyBzaWduaW5nQ29uZmlncy5teUNvbmZpZ1wKICAgICAgICAgICAgfVwK'
+          signingConfigs="$(echo "$signingConfigs" | base64 -d)"
+          signingConfig="$(echo "$signingConfig" | base64 -d)"
+          sed -i -e "/defaultConfig {/i\\$signingConfigs " -e "/debug {/a\\$signingConfig " -e "/release {/a\\$signingConfig " app/build.gradle
+          sed -i '$a\RELEASE_STORE_FILE=./TVBoxOSC.jks' ./gradle.properties
+          sed -i '$a\RELEASE_KEY_ALIAS=TVBoxOSC' ./gradle.properties
+          sed -i '$a\RELEASE_STORE_PASSWORD=TVBoxOSC' ./gradle.properties
+          sed -i '$a\RELEASE_KEY_PASSWORD=TVBoxOSC' ./gradle.properties
       - name: Build With Gradle
         run: |
           chmod +x gradlew
-          # 构建通用 + 海信 Java 版（arm64 + armeabi），不构建 Python，共 4 个已签名 APK
           ./gradlew assembleArm64GenericNormalRelease assembleArmeabiGenericNormalRelease assembleArm64HisenseNormalRelease assembleArmeabiHisenseNormalRelease --build-cache --parallel --daemon --warning-mode all
       - name: Prepare App
         run: |
