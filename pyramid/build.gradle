@@ -11,7 +11,14 @@ android {
         targetSdkVersion 28
 
         python {
-            buildPython("D:/Programs/Python/Python38/python.exe")
+            def pythonPath = System.getenv("PYTHON_PATH")
+            if (pythonPath != null && !pythonPath.isEmpty()) {
+                buildPython(pythonPath)
+            } else if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+                buildPython("D:/Programs/Python/Python38/python.exe")
+            } else {
+                buildPython("python3")
+            }
             pip {
                 install "lxml"
                 install "ujson"
