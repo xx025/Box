@@ -29,6 +29,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+      - name: Download TVBoxOSC keystore and configure signing
+        run: |
+          curl -sL -o app/TVBoxOSC.jks "https://github.com/j4Uq/TVBoxOSC/raw/master/.github/workflows/TVBoxOSC.jks"
+          echo "RELEASE_STORE_FILE=./TVBoxOSC.jks" >> gradle.properties
+          echo "RELEASE_KEY_ALIAS=TVBoxOSC" >> gradle.properties
+          echo "RELEASE_STORE_PASSWORD=TVBoxOSC" >> gradle.properties
+          echo "RELEASE_KEY_PASSWORD=TVBoxOSC" >> gradle.properties
       - name: Build With Gradle
         run: |
           chmod +x gradlew
