@@ -39,13 +39,26 @@ jobs:
       - name: Build With Gradle
         run: |
           chmod +x gradlew
-          # 仅构建通用 Java 版（arm64 + armeabi），不构建 Python/海信，确保可安装的已签名 APK
-          ./gradlew assembleArm64GenericNormalRelease assembleArmeabiGenericNormalRelease --build-cache --parallel --daemon --warning-mode all
+          # 构建通用 + 海信 Java 版（arm64 + armeabi），不构建 Python，共 4 个已签名 APK
+          ./gradlew assembleArm64GenericNormalRelease assembleArmeabiGenericNormalRelease assembleArm64HisenseNormalRelease assembleArmeabiHisenseNormalRelease --build-cache --parallel --daemon --warning-mode all
       - name: Prepare App
         run: |
           mkdir -p ${{ github.workspace }}/apk/
           find . -name "*.apk" -type f | while read f; do mv "$f" ${{ github.workspace }}/apk/; done
           ls -la ${{ github.workspace }}/apk/
+      - name: Verify APK signing
+        run: |
+          apk=$(ls ${{ github.workspace }}/apk/*.apk 2>/dev/null | head -1)
+          apksigner=$(ls $ANDROID_HOME/build-tools/*/apksigner 2>/dev/null | head -1)
+          if [ -n "$apk" ] && [ -n "$apksigner" ]; then
+            echo "Verifying signing of: $apk"
+            "$apksigner" verify -v --print-certs "$apk" || true
+            echo "--- META-INF (signature files) ---"
+            unzip -l "$apk" | grep -E "META-INF/(.*\.RSA|.*\.SF|.*\.MF)" || true
+          else
+            echo "No APK or apksigner found; listing apk dir:"
+            ls -la ${{ github.workspace }}/apk/ || true
+          fi
       - name: Upload App To Artifact
         uses: actions/upload-artifact@v4
         with:
